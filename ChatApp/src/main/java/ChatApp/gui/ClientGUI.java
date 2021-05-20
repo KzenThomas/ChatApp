@@ -4,12 +4,16 @@ package ChatApp.gui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -32,11 +36,13 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.Timer;
 import javax.swing.UIManager;
@@ -87,6 +93,9 @@ public class ClientGUI extends JFrame {
 	ListSelectionModel listSelectionModel;
 	Login login = new Login();
 	String Conversationsname;
+	String convonaam;
+	DefaultListModel<Conversations> conversationslistmodel = new DefaultListModel<>();
+	JList<Conversations> conversationslist;
 
 	public void display() {
 		JButton Filebutton = new JButton("select a file to encrypt");
@@ -117,32 +126,6 @@ public class ClientGUI extends JFrame {
 		l.setSize(100, 30);
 		southPanel.add(l);
 
-		Iterable<Conversations> conversations = conversationsRepo.findAll();
-
-		DefaultListModel<Conversations> dlm = new DefaultListModel<>();
-		for (Conversations l : conversations) {
-			dlm.addElement(l);
-		}
-
-		JList<Conversations> list = new JList<>(dlm);
-		list.setSize(300, this.getHeight() - 50);
-		JPanel listpanel = new JPanel();
-		listpanel.add(list);
-
-		ListSelectionListener listSelectionListener = new ListSelectionListener() {
-			public void valueChanged(ListSelectionEvent listSelectionEvent) {
-				boolean adjust = listSelectionEvent.getValueIsAdjusting();
-				if (!adjust) {
-					int index = list.getSelectedIndex();
-					Conversations selected = list.getSelectedValue();
-					System.out.println("Geselecteeerde chat: " + selected.getname());
-				}
-			}
-		};
-		list.addListSelectionListener(listSelectionListener);
-		this.getContentPane().add(listpanel, BorderLayout.WEST);
-
-		this.setVisible(true);
 		this.add(BorderLayout.SOUTH, southPanel);
 		this.setBounds(10, 10, 400, 600);
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -178,6 +161,39 @@ public class ClientGUI extends JFrame {
 		sendMessage.addActionListener(new sendMessageButtonListener());
 		this.setSize(600, 400);
 		showdecryptedtext();
+		showConversations();
+		this.setVisible(true);
+	}
+
+	private void refreshConversationsListmodel() {
+		Iterable<Conversations> conversations = conversationsRepo.findAll();
+		conversationslistmodel.clear();
+
+		for (Conversations l : conversations) {
+			conversationslistmodel.addElement(l);
+		}
+	}
+
+	public void showConversations() {
+		refreshConversationsListmodel();
+
+		conversationslist = new JList<>(conversationslistmodel);
+		conversationslist.setSize(300, this.getHeight() - 50);
+		JPanel listpanel = new JPanel();
+		listpanel.add(conversationslist);
+
+		ListSelectionListener listSelectionListener = new ListSelectionListener() {
+			public void valueChanged(ListSelectionEvent listSelectionEvent) {
+				boolean adjust = listSelectionEvent.getValueIsAdjusting();
+				if (!adjust) {
+					int index = conversationslist.getSelectedIndex();
+					Conversations selected = conversationslist.getSelectedValue();
+					System.out.println("Geselecteeerde chat: " + selected.getname());
+				}
+			}
+		};
+		conversationslist.addListSelectionListener(listSelectionListener);
+		this.getContentPane().add(listpanel, BorderLayout.WEST);
 	}
 
 	public void showdecryptedtext() {
@@ -223,8 +239,8 @@ public class ClientGUI extends JFrame {
 				Login login = new Login(logingui.username, logingui.wachtwoord);
 				Login savedlogin = loginrepo.save(login);
 				Messages message = new Messages(savedlogin, encrypt, oneTimePad.position, myDateObj);
-			    //conversation.addmessage(message);
-				//conversationrepo.save(conversation);
+				// conversation.addmessage(message);
+				// conversationrepo.save(conversation);
 				messagerepo.save(message);
 				System.out.println("Decryptfile:" + encryptfile);
 //				String decrypt = oneTimePad.decrypt(encryptfile, 0, encrypt);
@@ -236,7 +252,42 @@ public class ClientGUI extends JFrame {
 
 	class StartNewConversation implements ActionListener {
 		public void actionPerformed(ActionEvent event) {
-			chatBox.setText("");
+			JFrame newconvoframe = new JFrame();
+			newconvoframe.setSize(400, 200);
+			JLabel vraag = new JLabel("Name for new conversation?");
+			JTextField input = new JTextField();
+
+			Iterable<Login> allloginusersiterable = loginrepo.findAll();
+			List<String> allloginusers = new ArrayList<String>();
+			allloginusersiterable.forEach(login -> allloginusers.add(login.getusername()));
+
+			DefaultListModel<String> users = new DefaultListModel<String>();
+			users.addAll(allloginusers);
+			JList<String> displayList = new JList<>(users);
+			JScrollPane scrollPane = new JScrollPane(displayList);
+
+			vraag.setForeground(Color.GRAY);
+			input.setPreferredSize(new Dimension(75, 20));
+			JPanel panel = new JPanel();
+			panel.add(vraag);
+			panel.add(input);
+			panel.add(scrollPane);
+			newconvoframe.add(panel);
+			input.addKeyListener(new KeyAdapter() {
+				@Override
+				public void keyPressed(KeyEvent e) {
+					if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+						convonaam = input.getText();
+						System.out.println(convonaam);
+						Conversations conversations = new Conversations(convonaam);
+						conversationsRepo.save(conversations);
+						newconvoframe.dispose();
+						refreshConversationsListmodel();
+						conversationslist.repaint();
+					}
+				}
+			});
+			newconvoframe.setVisible(true);
 		}
 	}
 }

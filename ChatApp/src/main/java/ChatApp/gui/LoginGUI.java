@@ -80,17 +80,6 @@ public class LoginGUI extends JFrame {
 					dispose();
 					clientgui.display();
 				}
-				if (e.getSource() == resetButton) {
-					userTextField.setText("");
-					passwordField.setText("");
-				}
-				if (e.getSource() == showPassword) {
-					if (showPassword.isSelected()) {
-						passwordField.setEchoChar((char) 0);
-					} else {
-						passwordField.setEchoChar('*');
-					}
-				}
 			}
 		});
 		resetButton.addActionListener(new ActionListener() {

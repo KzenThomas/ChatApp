@@ -25,7 +25,7 @@ import ChatApp.gui.LoginGUI;
 public class Springbootapp {
 
 	/**
-	 * Deze main method zorgt ervoor dat je de applicatie kan opstarten.
+	 * Deze main method zorgt ervoor dat je de chatapp applicatie kan opstarten.
 	 */
 
 	public static void main(String[] args) {

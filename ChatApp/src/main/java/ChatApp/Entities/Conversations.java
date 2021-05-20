@@ -40,7 +40,7 @@ public class Conversations {
 	public void setname(String name) {
 		this.name = name;
 	}
-
+	
 	@ManyToMany(cascade = { CascadeType.ALL })
 	@JoinTable(name = "messagestoconversations", joinColumns = {
 			@JoinColumn(name = "messageid") }, inverseJoinColumns = { @JoinColumn(name = "conversationsid") })
@@ -51,8 +51,8 @@ public class Conversations {
 			@JoinColumn(name = "conversationsid") })
 	Set<Login> logins = new HashSet<>();
 
-	public Conversations(String gespreksnaam) {
-		this.name = "gesprek1";
+	public Conversations(String convonaam) {
+		this.name = convonaam;
 	}
 
 	public Conversations() {
