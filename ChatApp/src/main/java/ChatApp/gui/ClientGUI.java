@@ -1,4 +1,3 @@
-
 package ChatApp.gui;
 
 import java.awt.BorderLayout;
@@ -14,6 +13,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -27,8 +27,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
+import javax.crypto.EncryptedPrivateKeyInfo;
+import javax.swing.Action;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -91,35 +96,31 @@ public class ClientGUI extends JFrame {
 	static JLabel l;
 	File encryptfile;
 	ListSelectionModel listSelectionModel;
-	Login login = new Login();
-	String Conversationsname;
 	String convonaam;
 	DefaultListModel<Conversations> conversationslistmodel = new DefaultListModel<>();
-	JList<Conversations> conversationslist;
+	JList<Conversations> conversationslist = new JList<>(conversationslistmodel);
+	Login login;
+	Conversations conversations;
+	JButton Filebutton = new JButton("select a file to encrypt");
+
+	public void setLogin(Login login) {
+		this.login = login;
+	}
 
 	public void display() {
-		JButton Filebutton = new JButton("select a file to encrypt");
+		Filebutton.setEnabled(false);
 		Filebutton.addActionListener((event) -> {
-			// if the user presses the save button show the save dialog
 			String com = event.getActionCommand();
-
-			// create an object of JFileChooser class
 			JFileChooser j = new JFileChooser(FileSystemView.getFileSystemView().getHomeDirectory());
-
-			// invoke the showsSaveDialog function to show the save dialog
 			int r = j.showOpenDialog(null);
-
-			// if the user selects a file
 			if (r == JFileChooser.APPROVE_OPTION) {
-				// set the label to the path of the selected file
 				l.setText(j.getSelectedFile().getAbsolutePath());
 				encryptfile = j.getSelectedFile();
-			}
-			// if the user cancelled the operation
-			else {
+			} else {
 				l.setText("the user cancelled the operation");
 			}
 		});
+
 		JPanel southPanel = new JPanel();
 		southPanel.add(Filebutton);
 		l = new JLabel("no file selected");
@@ -156,6 +157,25 @@ public class ClientGUI extends JFrame {
 
 		southPanel.add(messageBox, left);
 		southPanel.add(sendMessage, right);
+		messageBox.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+					if (messageBox.getText().length() < 1) {
+					} else if (messageBox.getText().equals(".clear")) {
+						chatBox.setText("Cleared all messages\n");
+						messageBox.setText("");
+					} else {
+						String encrypt = oneTimePad.encrypt(encryptfile, messageBox.getText());
+						Messages message = new Messages(login, conversations, encrypt,
+								oneTimePad.position - encrypt.length(), myDateObj);
+						messagerepo.save(message);
+						System.out.println("Decryptfile:" + encryptfile);
+						messageBox.setText("");
+					}
+				}
+			}
+		});
 
 		chatBox.setFont(new Font("Serif", Font.PLAIN, 15));
 		sendMessage.addActionListener(new sendMessageButtonListener());
@@ -174,26 +194,67 @@ public class ClientGUI extends JFrame {
 		}
 	}
 
+	public void SelectEncryptFile() {
+		JFileChooser j = new JFileChooser(FileSystemView.getFileSystemView().getHomeDirectory());
+		int r = j.showOpenDialog(null);
+
+		if (r == JFileChooser.APPROVE_OPTION) {
+			l.setText(j.getSelectedFile().getAbsolutePath());
+			encryptfile = j.getSelectedFile();
+		}
+		else {
+			l.setText("the user cancelled the operation");
+		}
+	}
+
 	public void showConversations() {
 		refreshConversationsListmodel();
-
 		conversationslist = new JList<>(conversationslistmodel);
 		conversationslist.setSize(300, this.getHeight() - 50);
 		JPanel listpanel = new JPanel();
 		listpanel.add(conversationslist);
-
 		ListSelectionListener listSelectionListener = new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent listSelectionEvent) {
 				boolean adjust = listSelectionEvent.getValueIsAdjusting();
-				if (!adjust) {
-					int index = conversationslist.getSelectedIndex();
-					Conversations selected = conversationslist.getSelectedValue();
-					System.out.println("Geselecteeerde chat: " + selected.getname());
+				Integer tempMessageId = -1;
+				Conversations selected = conversationslist.getSelectedValue();
+				if (!adjust && selected != null) {
+					chatBox.setText("");
+					Filebutton.setEnabled(true);
+					conversations = selected;
+					List<Conversations> selectedconversations = conversationslist.getSelectedValuesList();
+					/*
+					 * conversationsRepo.OnlyPassCertainUsersInConversations(conversations.
+					 * getconversationsid());
+					 */
+					if (encryptfile == null) {
+						SelectEncryptFile();
+					}
+					refreshConversationsListmodel();
+					conversationslist.repaint();
+					initializeOneTimePadToCorrectPosition(selected);
+
 				}
 			}
 		};
+
 		conversationslist.addListSelectionListener(listSelectionListener);
 		this.getContentPane().add(listpanel, BorderLayout.WEST);
+	}
+
+	private void initializeOneTimePadToCorrectPosition(Conversations selected) {
+		List<Messages> messages = messagerepo.getAllMessagesFromconversations(conversations.getconversationsid());
+		int maxoffsetinconvo = 0;
+		Messages langste = null;
+		for (Messages m : messages) {
+			if (m.getoffset() > maxoffsetinconvo) {
+				maxoffsetinconvo = m.getoffset();
+				langste = m;
+			}
+		}
+		if (langste != null) {
+			oneTimePad.position = langste.getoffset() + langste.getmessagetext().length();
+		}
 	}
 
 	public void showdecryptedtext() {
@@ -203,12 +264,13 @@ public class ClientGUI extends JFrame {
 				if (encryptfile == null) {
 					return;
 				} else {
-					Iterable<Messages> messagess = messagerepo.findAll();
+					List<Messages> messagess = messagerepo
+							.getAllMessagesFromconversations(conversations.getconversationsid());
 					chatBox.setText("");
 					for (Messages m : messagess) {
 						String getmessagetext = m.getmessagetext();
 						String decrypt = oneTimePad.decrypt(encryptfile, m.getoffset(), getmessagetext);
-						chatBox.append(m.getLogin().getusername() + ":  " + decrypt + "\n");
+						chatBox.append(m.getLogin().getusername() + ": " + decrypt + "\n");
 						messagess.spliterator();
 					}
 				}
@@ -230,21 +292,11 @@ public class ClientGUI extends JFrame {
 				chatBox.setText("Cleared all messages\n");
 				messageBox.setText("");
 			} else {
-//				chatBox.append(logingui.username + ":  " + messageBox.getText() + "\n");
-				System.out.println("Username: " + logingui.username);
-				System.out.println("***************************");
-				System.out.println("Encryptfile:" + encryptfile);
-				String encrypt = oneTimePad.encrypt(encryptfile, 0, messageBox.getText());
-				System.out.println(encrypt);
-				Login login = new Login(logingui.username, logingui.wachtwoord);
-				Login savedlogin = loginrepo.save(login);
-				Messages message = new Messages(savedlogin, encrypt, oneTimePad.position, myDateObj);
-				// conversation.addmessage(message);
-				// conversationrepo.save(conversation);
+				String encrypt = oneTimePad.encrypt(encryptfile, messageBox.getText());
+				Messages message = new Messages(login, conversations, encrypt, oneTimePad.position - encrypt.length(),
+						myDateObj);
 				messagerepo.save(message);
 				System.out.println("Decryptfile:" + encryptfile);
-//				String decrypt = oneTimePad.decrypt(encryptfile, 0, encrypt);
-//				System.out.println(decrypt);
 				messageBox.setText("");
 			}
 		}
@@ -258,12 +310,13 @@ public class ClientGUI extends JFrame {
 			JTextField input = new JTextField();
 
 			Iterable<Login> allloginusersiterable = loginrepo.findAll();
-			List<String> allloginusers = new ArrayList<String>();
+			List<String> allloginusers = new ArrayList<>();
 			allloginusersiterable.forEach(login -> allloginusers.add(login.getusername()));
 
 			DefaultListModel<String> users = new DefaultListModel<String>();
 			users.addAll(allloginusers);
 			JList<String> displayList = new JList<>(users);
+			displayList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 			JScrollPane scrollPane = new JScrollPane(displayList);
 
 			vraag.setForeground(Color.GRAY);
@@ -280,7 +333,18 @@ public class ClientGUI extends JFrame {
 						convonaam = input.getText();
 						System.out.println(convonaam);
 						Conversations conversations = new Conversations(convonaam);
-						conversationsRepo.save(conversations);
+						Conversations savedconversation = conversationsRepo.save(conversations);
+						List<String> SelectedUsers = displayList.getSelectedValuesList();
+						Iterable<Login> logins = loginrepo.findAll();
+						for (Login l : logins) {
+							if (SelectedUsers.contains(l.getusername())) {
+								System.out.println("adding login " + l.getusername() + " id: " + l.getloginid()
+										+ " to convo: " + savedconversation.getconversationsid());
+								savedconversation.addlogin(l);
+							}
+						}
+						conversationsRepo.save(savedconversation);
+						setSavedConversation(savedconversation);
 						newconvoframe.dispose();
 						refreshConversationsListmodel();
 						conversationslist.repaint();
@@ -289,5 +353,15 @@ public class ClientGUI extends JFrame {
 			});
 			newconvoframe.setVisible(true);
 		}
+	}
+
+	private Conversations savedConversation;
+
+	private void setSavedConversation(Conversations savedconversation) {
+		this.savedConversation = savedconversation;
+	}
+
+	public Conversations getSavedConversation() {
+		return this.savedConversation;
 	}
 }

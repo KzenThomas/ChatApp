@@ -3,11 +3,17 @@ package ChatApp.gui;
 import java.awt.Container;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 
@@ -35,6 +41,7 @@ public class LoginGUI extends JFrame {
 
 	public String username;
 	public String wachtwoord;
+	private Map<String, Integer> duplicates = new HashMap<>();
 	Container container = getContentPane();
 	JLabel userLabel = new JLabel("USERNAME");
 	JLabel passwordLabel = new JLabel("PASSWORD");
@@ -68,6 +75,13 @@ public class LoginGUI extends JFrame {
 		container.add(resetButton);
 	}
 
+	private Login findLoginInDB(String username) {
+		Iterable<Login> allloginusersiterable = loginRepo.findAll();
+		List<String> allloginusers = new ArrayList<>();
+		allloginusersiterable.forEach(login -> allloginusers.add(login.getusername()));
+		return null;
+	}
+
 	public void addActionEvent() {
 		loginButton.addActionListener(new ActionListener() {
 			@Override
@@ -75,12 +89,30 @@ public class LoginGUI extends JFrame {
 				if (e.getSource() == loginButton) {
 					username = userTextField.getText();
 					wachtwoord = passwordField.getText();
-					Login login = new Login(username, wachtwoord);
+
+					if (isUserDuplicate(username)) {
+						JOptionPane.showMessageDialog(null, "user already exists!", "USERNAME ERROR",
+								JOptionPane.ERROR_MESSAGE);
+					}
+
+					Login loginfromdb = findLoginInDB(username);
+					Login login = null;
+					if (loginfromdb == null) {
+						login = new Login(username, wachtwoord);
+						login = loginRepo.save(login);
+					} else {
+						if (login.getwachtwoord().equals(wachtwoord)) {
+							login = loginfromdb;
+						} else {
+						}
+					}
 					saveLogintoDB(login);
 					dispose();
+					clientgui.setLogin(login);
 					clientgui.display();
 				}
 			}
+
 		});
 		resetButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -107,6 +139,19 @@ public class LoginGUI extends JFrame {
 		loginRepo.save(login);
 	}
 
+	private void preloadUsersFromDB() {
+		Iterable<Login> logins = loginRepo.findAll();
+		List<String> user = new ArrayList<>();
+		logins.forEach(e -> user.add(e.getusername()));
+		for (String s : user) {
+			duplicates.put(s, 1);
+		}
+	}
+
+	private boolean isUserDuplicate(String user) {
+		return (duplicates.containsKey(user)) ? true : false;
+	}
+
 	public void display() {
 		this.setTitle("Login Form");
 		this.setBounds(10, 10, 370, 600);
@@ -115,6 +160,7 @@ public class LoginGUI extends JFrame {
 		setLayoutManager();
 		setLocationAndSize();
 		addComponentsToContainer();
+		preloadUsersFromDB();
 		addActionEvent();
 		this.setVisible(true);
 	}

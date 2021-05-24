@@ -67,9 +67,4 @@ public class Login {
 		this.username = username;
 		this.wachtwoord = wachtwoord;
 	}
-
-	@ManyToMany(cascade = { CascadeType.ALL })
-	@JoinTable(name = "conversationstologin", joinColumns = {
-			@JoinColumn(name = "conversationsid") }, inverseJoinColumns = { @JoinColumn(name = "loginid") })
-	Set<Conversations> conversations = new HashSet<>();
 }

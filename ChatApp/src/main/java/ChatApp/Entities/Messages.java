@@ -27,6 +27,10 @@ public class Messages {
 	@ManyToOne
 	@JoinColumn(name = "loginid")
 	private Login login;
+	
+	@ManyToOne
+	@JoinColumn(name = "conversationsid")
+	private Conversations conversations;
 
 	@Column(name = "messagetext")
 	private String messagetext;
@@ -36,10 +40,6 @@ public class Messages {
 
 	@Column(name = "messagedate")
 	private LocalDateTime messagedate;
-
-	public Integer getmessageid() {
-		return messageid;
-	}
 
 	public String getmessagetext() {
 		return messagetext;
@@ -72,6 +72,7 @@ public class Messages {
 	public void setLogin(Login login) {
 		this.login = login;
 	}
+	
 
 	public String getMessagetext() {
 		return messagetext;
@@ -89,14 +90,6 @@ public class Messages {
 		this.offset = offset;
 	}
 
-	public Set<Conversations> getConversations() {
-		return conversations;
-	}
-
-	public void setConversations(Set<Conversations> conversations) {
-		this.conversations = conversations;
-	}
-
 	public void setmessagetext(String messagetext) {
 		this.messagetext = messagetext;
 	}
@@ -109,17 +102,13 @@ public class Messages {
 		this.messagedate = messagedate;
 	}
 
-	@ManyToMany(cascade = { CascadeType.ALL })
-	@JoinTable(name = "Messages Conversations", joinColumns = {
-			@JoinColumn(name = "messageid") }, inverseJoinColumns = { @JoinColumn(name = "conversationsid") })
-	Set<Conversations> conversations = new HashSet<>();
-
 	public Messages() {
 
 	}
 
-	public Messages(Login login, String text, Integer positie, LocalDateTime formattedDate) {
+	public Messages(Login login,Conversations conversations, String text, Integer positie, LocalDateTime formattedDate) {
 		this.login = login;
+		this.conversations = conversations;
 		this.messagetext = text;
 		this.offset = positie;
 		this.messagedate = formattedDate;

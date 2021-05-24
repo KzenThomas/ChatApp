@@ -13,7 +13,7 @@ import ChatApp.Entities.Login;;
 public interface LoginRepo extends CrudRepository<Login, String>{
 	
 	@Query(value = "Select * from Login", nativeQuery = true)
-	Iterable<Login> getAllLogin();
+	List<Login> getAllLogin();
 
 
 }	

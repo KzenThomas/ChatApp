@@ -7,6 +7,7 @@ import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
@@ -40,15 +41,10 @@ public class Conversations {
 	public void setname(String name) {
 		this.name = name;
 	}
-	
-	@ManyToMany(cascade = { CascadeType.ALL })
-	@JoinTable(name = "messagestoconversations", joinColumns = {
-			@JoinColumn(name = "messageid") }, inverseJoinColumns = { @JoinColumn(name = "conversationsid") })
-	Set<Messages> messages = new HashSet<>();
 
-	@ManyToMany(cascade = { CascadeType.ALL })
-	@JoinTable(name = "conversationstologin", joinColumns = { @JoinColumn(name = "loginid") }, inverseJoinColumns = {
-			@JoinColumn(name = "conversationsid") })
+	@ManyToMany(cascade = { CascadeType.ALL }, fetch = FetchType.LAZY)
+	@JoinTable(name = "conversationstologin", joinColumns = { @JoinColumn(name = "conversationsid") }, inverseJoinColumns = {
+			@JoinColumn(name = "loginid") })
 	Set<Login> logins = new HashSet<>();
 
 	public Conversations(String convonaam) {
@@ -59,15 +55,9 @@ public class Conversations {
 
 	}
 
-	public Set<Messages> getMessages() {
-		return messages;
-	}
 
-	public void setMessages(Set<Messages> messages) {
-		this.messages = messages;
-	}
 
-	public Set<Login> getLogins() {
+	public Set<Login> selected() {
 		return logins;
 	}
 
@@ -79,4 +69,26 @@ public class Conversations {
 	public String toString() {
 		return this.getname();
 	}
+
+	public Integer getConversationsid() {
+		return conversationsid;
+	}
+
+	public void setConversationsid(Integer conversationsid) {
+		this.conversationsid = conversationsid;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public void addlogin(Login login) {
+		this.logins.add(login);
+	}
+	
+	
 }

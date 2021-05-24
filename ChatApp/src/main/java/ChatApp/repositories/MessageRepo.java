@@ -13,6 +13,9 @@ import ChatApp.Entities.Messages;
 public interface MessageRepo extends CrudRepository<Messages, String>{
 	
 	@Query(value = "Select messagetext from Messages", nativeQuery = true)
-	Iterable<Messages> getAllMessages();
+	List<Messages> getAllMessages();
+	
+	@Query(value = "select m from Messages m where m.conversations.conversationsid = :conversationsid")
+	List<Messages>getAllMessagesFromconversations(Integer conversationsid);
 
 }	
